@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import Board from './components/Board';
 import ScoreBoard from './components/ScoreBoard';
 import ResultsTable from './components/ResultsTable';
+import Modal from './components/Modal';
 import { calculateWinner } from './utils/gameUtils';
 import './App.css';
 
@@ -16,6 +17,7 @@ export default function Game() {
   const [gameResults, setGameResults] = useState([]);
   const [currentGame, setCurrentGame] = useState(1);
   const [isTransitioning, setIsTransitioning] = useState(false);
+  const [modal, setModal] = useState({ isOpen: false, message: '', type: 'info' });
 
   const xIsNext = currentMove % 2 === 0;
   const currentSquares = history[currentMove];
@@ -25,10 +27,18 @@ export default function Game() {
     if (isComputerTurn && gameStarted) {
       const timer = setTimeout(() => {
         makeComputerMove();
-      }, 1000); // Increased delay for better UX
+      }, 800);
       return () => clearTimeout(timer);
     }
   }, [isComputerTurn, gameStarted]);
+
+  function showModal(message, type = 'info') {
+    setModal({ isOpen: true, message, type });
+  }
+
+  function closeModal() {
+    setModal({ ...modal, isOpen: false });
+  }
 
   function makeComputerMove() {
     if (calculateWinner(currentSquares)) return;
@@ -60,12 +70,15 @@ export default function Game() {
     if (winner === 'X') {
       setPlayerScore(prev => prev + 1);
       setGameResults(prev => [...prev, { winner: playerName, result: 'win' }]);
+      showModal(`${playerName} wins this round!`, 'success');
     } else if (winner === 'O') {
       setComputerScore(prev => prev + 1);
       setGameResults(prev => [...prev, { winner: 'Computer', result: 'lose' }]);
+      showModal('Computer wins this round!', 'error');
     } else {
       setDraws(prev => prev + 1);
       setGameResults(prev => [...prev, { winner: 'Draw', result: 'draw' }]);
+      showModal('This round is a draw!', 'info');
     }
 
     if (currentGame < 3) {
@@ -75,17 +88,23 @@ export default function Game() {
         setHistory([Array(9).fill(null)]);
         setCurrentMove(0);
         setIsTransitioning(false);
-      }, 2000); // Increased delay for better transition
+      }, 1500);
     } else {
       setTimeout(() => {
         setGameStarted(false);
-      }, 2000);
+        const finalMessage = playerScore > computerScore
+          ? `Congratulations ${playerName}! You won the game!`
+          : playerScore < computerScore
+            ? 'Computer won the game!'
+            : 'The game ended in a draw!';
+        showModal(finalMessage, playerScore > computerScore ? 'success' : 'info');
+      }, 1500);
     }
   }
 
   function startNewGame() {
     if (!playerName.trim()) {
-      alert('Please enter your name to start the game!');
+      showModal('Please enter your name to start the game!', 'error');
       return;
     }
     setGameStarted(true);
@@ -140,6 +159,12 @@ export default function Game() {
           <ResultsTable gameResults={gameResults} />
         </div>
       )}
+      <Modal
+        isOpen={modal.isOpen}
+        message={modal.message}
+        type={modal.type}
+        onClose={closeModal}
+      />
     </div>
   );
 }
